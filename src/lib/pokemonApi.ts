@@ -1,4 +1,7 @@
 import { PokemonCard } from './types';
+import pokemonNamesMapData from './pokemonNames.json';
+
+const pokemonNamesMap = pokemonNamesMapData as Record<string, string>;
 
 const API_BASE = 'https://api.pokemontcg.io/v2';
 
@@ -19,11 +22,30 @@ interface ApiResponse {
   totalCount: number;
 }
 
+function translateName(name: string): string {
+  const lower = name.toLowerCase().trim();
+  // Exact match
+  if (pokemonNamesMap[lower]) {
+    return pokemonNamesMap[lower];
+  }
+  
+  // Partial match: if the search term partially matches a French name, use the English equivalent
+  if (lower.length >= 3) {
+    for (const [fr, en] of Object.entries(pokemonNamesMap)) {
+      if (fr.includes(lower)) {
+        return en;
+      }
+    }
+  }
+  return name;
+}
+
 function buildSearchQuery(params: SearchParams): string {
   const parts: string[] = [];
 
   if (params.name) {
-    parts.push(`name:"${params.name}*"`);
+    const enName = translateName(params.name);
+    parts.push(`name:"${enName}*"`);
   }
   if (params.number) {
     parts.push(`number:${params.number}`);
@@ -33,11 +55,14 @@ function buildSearchQuery(params: SearchParams): string {
   }
   if (params.query) {
     // If query looks like a card number pattern (digits/digits)
-    const numberMatch = params.query.match(/^(\d{1,4})\s*\/\s*\d{1,4}$/);
+    const numberMatch = params.query.match(/^(\d{1,4})\s*\/\s*(\d{1,4})$/);
     if (numberMatch) {
-      parts.push(`number:${numberMatch[1]}`);
+      const num = numberMatch[1].replace(/^0+/, '') || '0';
+      const total = numberMatch[2];
+      parts.push(`number:${num} set.printedTotal:${total}`);
     } else {
-      parts.push(`name:"${params.query}*"`);
+      const enName = translateName(params.query);
+      parts.push(`name:"${enName}*"`);
     }
   }
 

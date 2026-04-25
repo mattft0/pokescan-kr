@@ -92,8 +92,8 @@ export default function ScanPage() {
       // Search API with detected number
       if (ocrResult.cardNumber) {
         setLoading(true);
-        const numberOnly = ocrResult.cardNumber.split('/')[0].replace(/^0+/, '');
-        const response = await searchCards({ number: numberOnly, pageSize: 12 });
+        // We pass the full card number (e.g. 025/165) to query, which handles both number and printedTotal
+        const response = await searchCards({ query: ocrResult.cardNumber, pageSize: 20 });
         setResults(response.data);
         setLoading(false);
       }

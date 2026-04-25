@@ -84,7 +84,7 @@ export default function SearchPage() {
             <input
               type="text"
               className="search-input"
-              placeholder="Ex: Charizard, Pikachu, 025..."
+              placeholder="Ex: Ectoplasma, Pikachu, 025/165..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               id="search-input"
@@ -181,7 +181,7 @@ export default function SearchPage() {
             <span className="empty-state-icon">🃏</span>
             <h3 className="empty-state-title">Trouvez vos cartes</h3>
             <p className="empty-state-text">
-              Tapez le nom anglais du Pokémon ou le numéro imprimé sur la carte (ex: 025).
+              Tapez le nom du Pokémon (français ou anglais) ou le numéro imprimé sur la carte (ex: 025/165).
             </p>
           </div>
         )}
