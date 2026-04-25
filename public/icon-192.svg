@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="40" fill="#07070d"/>
+  <circle cx="96" cy="96" r="70" fill="none" stroke="#ff6b35" stroke-width="6"/>
+  <line x1="26" y1="96" x2="166" y2="96" stroke="#ff6b35" stroke-width="6"/>
+  <circle cx="96" cy="96" r="20" fill="#07070d" stroke="#ff6b35" stroke-width="6"/>
+  <circle cx="96" cy="96" r="8" fill="#ff6b35"/>
+  <text x="96" y="170" text-anchor="middle" fill="#f0f0f2" font-family="Arial" font-size="18" font-weight="bold">PokéScan</text>
+</svg>
