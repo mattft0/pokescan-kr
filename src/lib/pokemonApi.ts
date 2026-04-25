@@ -58,8 +58,9 @@ function buildSearchQuery(params: SearchParams): string {
     const numberMatch = params.query.match(/^(\d{1,4})\s*\/\s*(\d{1,4})$/);
     if (numberMatch) {
       const num = numberMatch[1].replace(/^0+/, '') || '0';
-      const total = numberMatch[2];
-      parts.push(`number:${num} set.printedTotal:${total}`);
+      // We only search by number. We do NOT use printedTotal because Korean/Japanese set totals 
+      // do not match English TCG set totals, and OCR can make mistakes reading the total.
+      parts.push(`number:${num}`);
     } else {
       const enName = translateName(params.query);
       parts.push(`name:"${enName}*"`);

@@ -26,7 +26,7 @@ export default function SearchPage() {
     setLoading(true);
     setSearched(true);
     try {
-      const response = await searchCards({ query: searchQuery.trim(), pageSize: 24 });
+      const response = await searchCards({ query: searchQuery.trim(), pageSize: 100 });
       setResults(response.data);
     } catch (err) {
       console.error('Search error:', err);

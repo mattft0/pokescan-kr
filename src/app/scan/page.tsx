@@ -93,7 +93,7 @@ export default function ScanPage() {
       if (ocrResult.cardNumber) {
         setLoading(true);
         // We pass the full card number (e.g. 025/165) to query, which handles both number and printedTotal
-        const response = await searchCards({ query: ocrResult.cardNumber, pageSize: 20 });
+        const response = await searchCards({ query: ocrResult.cardNumber, pageSize: 100 });
         setResults(response.data);
         setLoading(false);
       }
