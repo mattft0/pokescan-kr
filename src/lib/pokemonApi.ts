@@ -74,7 +74,11 @@ function buildSearchQuery(params: SearchParams): string {
       if (mappedId && !asianSetId) { // Take the first matched set code
         asianSetId = mappedId;
       } else {
-        remainingWords.push(word);
+        // If it looks like an unmapped Asian set code (e.g. m2a, s8b, sv4a, etc.), ignore it completely
+        // to avoid ruining the Pokémon name search.
+        if (!/^[sS]?[va-zA-Z]{1,3}\d{1,2}[a-zA-Z]?\+?$/.test(word)) {
+          remainingWords.push(word);
+        }
       }
     }
     
@@ -84,19 +88,27 @@ function buildSearchQuery(params: SearchParams): string {
     
     rawQuery = remainingWords.join(' ');
 
-    // If query looks like a card number pattern (digits/digits)
-    const numberMatch = rawQuery.match(/^(\d{1,4})\s*\/\s*(\d{1,4})$/);
-    if (numberMatch) {
-      const num = numberMatch[1].replace(/^0+/, '') || '0';
-      // We only search by number. We do NOT use printedTotal because Korean/Japanese set totals 
-      // do not match English TCG set totals, and OCR can make mistakes reading the total.
-      parts.push(`number:${num}`);
-    } else if (rawQuery) {
+    // Extract card number from anywhere in the string (e.g. "092/193")
+    const numberRegex = /(?:^|\s)(\d{1,4})\s*[\/\\]\s*(?:\d{1,4})(?:\s|$)/;
+    const numMatch = rawQuery.match(numberRegex);
+    let extractedNumber: string | null = null;
+    if (numMatch) {
+      extractedNumber = numMatch[1].replace(/^0+/, '') || '0';
+      // Remove the number pattern from rawQuery so it isn't treated as a name
+      rawQuery = rawQuery.replace(numMatch[0], ' ').trim();
+    }
+
+    if (rawQuery) {
       const enName = translateName(rawQuery);
       const nameParts = enName.split(/\s+/).filter(Boolean);
       nameParts.forEach(p => {
         parts.push(`name:*${p}*`);
       });
+      // If we have both name and number, it's safer to just search by name 
+      // because Asian/Fake card numbers rarely match English API numbers.
+    } else if (extractedNumber) {
+      // If there's no name, only the number, we search strictly by number
+      parts.push(`number:${extractedNumber}`);
     }
   }
 
