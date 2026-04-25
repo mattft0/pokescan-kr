@@ -1,5 +1,6 @@
 import { PokemonCard } from './types';
 import pokemonNamesMapData from './pokemonNames.json';
+import { getEnglishSetIdFromAsianCode } from './asianSetsMap';
 
 const pokemonNamesMap = pokemonNamesMapData as Record<string, string>;
 
@@ -23,21 +24,25 @@ interface ApiResponse {
 }
 
 function translateName(name: string): string {
-  const lower = name.toLowerCase().trim();
+  let lower = name.toLowerCase().trim();
   // Exact match
   if (pokemonNamesMap[lower]) {
     return pokemonNamesMap[lower];
   }
-  
-  // Partial match: if the search term partially matches a French name, use the English equivalent
-  if (lower.length >= 3) {
-    for (const [fr, en] of Object.entries(pokemonNamesMap)) {
-      if (fr.includes(lower)) {
-        return en;
-      }
+
+  // Partial match: if the search term contains a French name (e.g. "mega dracaufeu ex")
+  // Replace the French name with the English equivalent.
+  for (const [fr, en] of Object.entries(pokemonNamesMap)) {
+    if (fr.length >= 3 && lower.includes(fr)) {
+      lower = lower.replace(fr, en.toLowerCase());
+      break;
     }
   }
-  return name;
+
+  // Handle Mega evolutions (Pokemon TCG uses 'M ' instead of 'Mega ')
+  lower = lower.replace(/\bm[ée]ga\s+/gi, 'm ');
+
+  return lower;
 }
 
 function buildSearchQuery(params: SearchParams): string {
@@ -45,7 +50,10 @@ function buildSearchQuery(params: SearchParams): string {
 
   if (params.name) {
     const enName = translateName(params.name);
-    parts.push(`name:"${enName}*"`);
+    const nameParts = enName.split(/\s+/).filter(Boolean);
+    nameParts.forEach(p => {
+      parts.push(`name:*${p}*`);
+    });
   }
   if (params.number) {
     parts.push(`number:${params.number}`);
@@ -54,16 +62,41 @@ function buildSearchQuery(params: SearchParams): string {
     parts.push(`set.id:${params.setId}`);
   }
   if (params.query) {
+    let rawQuery = params.query.trim();
+    
+    // Check if there is an Asian set code in the query
+    const words = rawQuery.split(/\s+/);
+    let asianSetId: string | null = null;
+    const remainingWords: string[] = [];
+    
+    for (const word of words) {
+      const mappedId = getEnglishSetIdFromAsianCode(word);
+      if (mappedId && !asianSetId) { // Take the first matched set code
+        asianSetId = mappedId;
+      } else {
+        remainingWords.push(word);
+      }
+    }
+    
+    if (asianSetId && !params.setId) {
+      parts.push(`set.id:${asianSetId}`);
+    }
+    
+    rawQuery = remainingWords.join(' ');
+
     // If query looks like a card number pattern (digits/digits)
-    const numberMatch = params.query.match(/^(\d{1,4})\s*\/\s*(\d{1,4})$/);
+    const numberMatch = rawQuery.match(/^(\d{1,4})\s*\/\s*(\d{1,4})$/);
     if (numberMatch) {
       const num = numberMatch[1].replace(/^0+/, '') || '0';
       // We only search by number. We do NOT use printedTotal because Korean/Japanese set totals 
       // do not match English TCG set totals, and OCR can make mistakes reading the total.
       parts.push(`number:${num}`);
-    } else {
-      const enName = translateName(params.query);
-      parts.push(`name:"${enName}*"`);
+    } else if (rawQuery) {
+      const enName = translateName(rawQuery);
+      const nameParts = enName.split(/\s+/).filter(Boolean);
+      nameParts.forEach(p => {
+        parts.push(`name:*${p}*`);
+      });
     }
   }
 

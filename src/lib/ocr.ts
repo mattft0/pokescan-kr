@@ -51,31 +51,34 @@ function extractCardNumber(text: string): string | null {
     .replace(/\]/g, '1')
     .replace(/[7}\|]/g, '/'); // Misread slashes
 
-  // Match patterns like: 025/165, 25/165, 1/100, etc.
+  // Match patterns like: sv4a 025/165, s8b 25/165, 1/100, etc.
   const patterns = [
-    /(\d{1,4})\s*[\/\\]\s*(\d{1,4})/, // Standard: 025/165
-    /(\d{1,4})\s*-\s*(\d{1,4})/,      // Sometimes reads as hyphen
-    /(\d{1,4})\s*(\d{3,4})/           // If it misses the slash entirely but has a space (risky but possible, maybe skip this as it can match HP)
+    // Pattern with optional set code (e.g. sv4a, s8b, sm12a) before the number
+    /([a-zA-Z0-9+]{2,6})?\s*(\d{1,4})\s*[\/\\]\s*(\d{1,4})/, // Standard: sv4a 025/165
+    /([a-zA-Z0-9+]{2,6})?\s*(\d{1,4})\s*-\s*(\d{1,4})/,      // Sometimes reads as hyphen
+    /([a-zA-Z0-9+]{2,6})?\s*(\d{1,4})\s*(\d{3,4})/           // If it misses the slash entirely
   ];
 
   for (const pattern of patterns) {
     const match = cleanedText.match(pattern);
     if (match) {
-      // Avoid matching large random numbers like hp 120 150
-      if (parseInt(match[1]) > 0 && parseInt(match[2]) > 0 && parseInt(match[2]) <= 300) {
-        return `${match[1]}/${match[2]}`;
+      // match[1] = set code, match[2] = number, match[3] = total
+      if (parseInt(match[2]) > 0 && parseInt(match[3]) > 0 && parseInt(match[3]) <= 300) {
+        const setCode = match[1] ? `${match[1]} ` : '';
+        return `${setCode}${match[2]}/${match[3]}`;
       }
     }
   }
 
   // Fallback: standard extraction on original text in case cleaning messed it up
   const originalPatterns = [
-    /(\d{1,4})\s*[\/\\|]\s*(\d{1,4})/
+    /([a-zA-Z0-9+]{2,6})?\s*(\d{1,4})\s*[\/\\|]\s*(\d{1,4})/
   ];
   for (const pattern of originalPatterns) {
     const match = text.match(pattern);
     if (match) {
-      return `${match[1]}/${match[2]}`;
+      const setCode = match[1] ? `${match[1]} ` : '';
+      return `${setCode}${match[2]}/${match[3]}`;
     }
   }
 
