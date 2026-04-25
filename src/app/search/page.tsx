@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { searchCards, getBestPrice } from '@/lib/pokemonApi';
+import { searchCards, getBestPrice, searchSets } from '@/lib/pokemonApi';
 import { addCardToCollection, isCardInCollection, getSettings } from '@/lib/storage';
 import { PokemonCard, CollectionCard } from '@/lib/types';
 import Navigation from '@/components/Navigation';
@@ -12,12 +12,20 @@ export default function SearchPage() {
   const [results, setResults] = useState<PokemonCard[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [sets, setSets] = useState<PokemonCard['set'][]>([]);
+  const [selectedSet, setSelectedSet] = useState('');
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const performSearch = useCallback(async (searchQuery: string) => {
-    if (!searchQuery.trim()) {
+  useEffect(() => {
+    searchSets()
+      .then((res) => setSets(res.data))
+      .catch((err) => console.error('Failed to load sets:', err));
+  }, []);
+
+  const performSearch = useCallback(async (searchQuery: string, searchSetId: string) => {
+    if (!searchQuery.trim() && !searchSetId) {
       setResults([]);
       setSearched(false);
       return;
@@ -26,7 +34,7 @@ export default function SearchPage() {
     setLoading(true);
     setSearched(true);
     try {
-      const response = await searchCards({ query: searchQuery.trim(), pageSize: 100 });
+      const response = await searchCards({ query: searchQuery.trim(), setId: searchSetId, pageSize: 100 });
       setResults(response.data);
     } catch (err) {
       console.error('Search error:', err);
@@ -38,9 +46,9 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (query.trim().length >= 2) {
+    if (query.trim().length >= 2 || selectedSet) {
       debounceRef.current = setTimeout(() => {
-        performSearch(query);
+        performSearch(query, selectedSet);
       }, 500);
     } else {
       setResults([]);
@@ -49,7 +57,7 @@ export default function SearchPage() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, performSearch]);
+  }, [query, selectedSet, performSearch]);
 
   const handleAddCard = (card: PokemonCard) => {
     const collectionCard: CollectionCard = {
@@ -100,6 +108,34 @@ export default function SearchPage() {
                 ✕
               </button>
             )}
+          </div>
+          <div className="search-filters" style={{ marginTop: '12px', position: 'relative' }}>
+            <select
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-xl)',
+                color: 'var(--text-primary)',
+                outline: 'none',
+                fontFamily: 'inherit',
+                fontSize: '14px',
+                cursor: 'pointer',
+                appearance: 'none',
+              }}
+              value={selectedSet}
+              onChange={(e) => setSelectedSet(e.target.value)}
+              aria-label="Sélectionner une édition"
+            >
+              <option value="">Toutes les éditions</option>
+              {sets.map((s) => (
+                <option key={s.id} value={s.id} style={{ color: 'black' }}>
+                  {s.name} {s.ptcgoCode ? `(${s.ptcgoCode})` : ''} - {s.releaseDate?.substring(0, 4)}
+                </option>
+              ))}
+            </select>
+            <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', fontSize: '10px' }}>▼</span>
           </div>
         </div>
 
