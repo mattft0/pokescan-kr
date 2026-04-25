@@ -14,9 +14,9 @@ function preprocessImage(canvas: HTMLCanvasElement, image: HTMLImageElement | HT
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
 
-  // Crop bottom 25% of the image where card number usually is
-  const sourceY = Math.floor(image.height * 0.75);
-  const sourceHeight = Math.floor(image.height * 0.25);
+  // Crop bottom 60% of the image since the card number might be higher up in the raw camera feed
+  const sourceY = Math.floor(image.height * 0.40);
+  const sourceHeight = Math.floor(image.height * 0.60);
 
   canvas.width = image.width;
   canvas.height = sourceHeight;
@@ -41,24 +41,44 @@ function preprocessImage(canvas: HTMLCanvasElement, image: HTMLImageElement | HT
   return canvas;
 }
 
-/**
- * Extract card number from OCR text
- * Korean cards use the same format: XXX/YYY
- */
 function extractCardNumber(text: string): string | null {
+  // Clean up common OCR mistakes for numbers and separators
+  const cleanedText = text
+    .replace(/O/g, '0') // Letter O to Zero
+    .replace(/[lI]/g, '1') // Letter l or I to One
+    .replace(/[sS]/g, '5') // Letter S to Five
+    .replace(/z/gi, '2') // Letter Z to Two
+    .replace(/\]/g, '1')
+    .replace(/[7}\|]/g, '/'); // Misread slashes
+
   // Match patterns like: 025/165, 25/165, 1/100, etc.
   const patterns = [
-    /(\d{1,4})\s*\/\s*(\d{1,4})/,     // Standard: 025/165
-    /(\d{1,4})\s*[/\\|]\s*(\d{1,4})/, // With OCR artifacts
-    /#?\s*(\d{1,4})\s*\/\s*(\d{1,4})/  // With # prefix
+    /(\d{1,4})\s*[\/\\]\s*(\d{1,4})/, // Standard: 025/165
+    /(\d{1,4})\s*-\s*(\d{1,4})/,      // Sometimes reads as hyphen
+    /(\d{1,4})\s*(\d{3,4})/           // If it misses the slash entirely but has a space (risky but possible, maybe skip this as it can match HP)
   ];
 
   for (const pattern of patterns) {
+    const match = cleanedText.match(pattern);
+    if (match) {
+      // Avoid matching large random numbers like hp 120 150
+      if (parseInt(match[1]) > 0 && parseInt(match[2]) > 0 && parseInt(match[2]) <= 300) {
+        return `${match[1]}/${match[2]}`;
+      }
+    }
+  }
+
+  // Fallback: standard extraction on original text in case cleaning messed it up
+  const originalPatterns = [
+    /(\d{1,4})\s*[\/\\|]\s*(\d{1,4})/
+  ];
+  for (const pattern of originalPatterns) {
     const match = text.match(pattern);
     if (match) {
       return `${match[1]}/${match[2]}`;
     }
   }
+
   return null;
 }
 
