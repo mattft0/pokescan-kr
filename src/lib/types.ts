@@ -5,6 +5,7 @@ export interface PokemonCardSet {
   printedTotal: number;
   total: number;
   releaseDate: string;
+  ptcgoCode?: string;
   images: {
     symbol: string;
     logo: string;
